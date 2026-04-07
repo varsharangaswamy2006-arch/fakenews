@@ -9,26 +9,21 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 # =========================
-# SEED (reproducibility)
+# SEED
 # =========================
 random.seed(42)
 np.random.seed(42)
 
 # =========================
-# OPENENV YAML SPEC
+# YAML CONFIG
 # =========================
 OPENENV_YAML = """
 env_name: FakeNewsOpenEnvFinal
 type: text_environment
-action_space:
-  - REAL
-  - FAKE
+action_space: [REAL, FAKE]
 observation_space:
   type: text
-difficulty_levels:
-  - easy
-  - medium
-  - hard
+difficulty_levels: [easy, medium, hard]
 reward:
   correct: 1.0
   wrong: -1.0
@@ -41,7 +36,7 @@ agent_grader:
 CONFIG = yaml.safe_load(OPENENV_YAML)
 
 # =========================
-# DATASET (3 TASKS REQUIRED BY SPEC)
+# DATA
 # =========================
 DATA = {
     "easy": [
@@ -65,22 +60,29 @@ DATA = {
 }
 
 # =========================
-# MODEL TRAINING (BASELINE)
+# MODEL (CACHED)
 # =========================
-texts, labels = [], []
-for lvl in DATA:
-    for t, l in DATA[lvl]:
-        texts.append(t)
-        labels.append(l)
+@st.cache_resource
+def train_model():
+    texts, labels = [], []
 
-vectorizer = TfidfVectorizer()
-X = vectorizer.fit_transform(texts)
+    for lvl in DATA:
+        for t, l in DATA[lvl]:
+            texts.append(t)
+            labels.append(l)
 
-model = LogisticRegression(max_iter=500)
-model.fit(X, labels)
+    vectorizer = TfidfVectorizer()
+    X = vectorizer.fit_transform(texts)
+
+    model = LogisticRegression(max_iter=500)
+    model.fit(X, labels)
+
+    return model, vectorizer
+
+model, vectorizer = train_model()
 
 # =========================
-# PREDICTION ENGINE
+# PREDICT
 # =========================
 def predict(text):
     x = vectorizer.transform([text])
@@ -89,14 +91,13 @@ def predict(text):
     label = int(np.argmax(prob))
     confidence = float(np.max(prob))
 
-    # partial progress signal (IMPORTANT for OpenEnv)
     confidence += 0.1 * len(set(text.lower().split()) & {"fake", "secret", "conspiracy", "hidden"})
     confidence = min(confidence, 0.99)
 
     return label, confidence, prob
 
 # =========================
-# OPENENV IMPLEMENTATION (FULL SPEC)
+# OPENENV
 # =========================
 class OpenEnv:
     def __init__(self):
@@ -118,8 +119,6 @@ class OpenEnv:
         reward = 1.0 if action == true else -1.0
         reward += (confidence - 0.5) * 0.4
 
-        score = 1.0 if action == true else 0.0
-
         self.i += 1
         if self.i % 4 == 0 and self.level < 2:
             self.level += 1
@@ -129,21 +128,17 @@ class OpenEnv:
         return {
             "next_state": None if done else self.state(),
             "reward": reward,
-            "score": score,
             "done": done,
             "true": true
         }
 
-# =========================
-# INIT ENV
-# =========================
 env = OpenEnv()
 
 # =========================
-# STREAMLIT UI
+# UI
 # =========================
-st.set_page_config(page_title="Fake News OpenEnv ", layout="wide")
-st.title("🧠 Fake News OpenEnv FINAL ")
+st.set_page_config(page_title="Fake News Detector", layout="wide")
+st.title("🧠 Fake News Detector")
 
 mode = st.sidebar.selectbox("Mode", ["Inference", "Evaluation", "Metrics", "Docs"])
 
@@ -164,7 +159,7 @@ if mode == "Inference":
         st.pyplot(fig)
 
 # =========================
-# EVALUATION (AGENT GRADER REQUIRED)
+# EVALUATION
 # =========================
 elif mode == "Evaluation":
     state = env.reset()
@@ -204,53 +199,9 @@ elif mode == "Metrics":
     st.write(confusion_matrix(y_true, y_pred))
 
 # =========================
-# DOCS (FULL SUBMISSION PACKAGE)
+# DOCS
 # =========================
 elif mode == "Docs":
-    st.subheader("OpenEnv YAML")
     st.code(OPENENV_YAML, language="yaml")
 
-    st.subheader("requirements.txt")
-    st.code("""
-streamlit
-scikit-learn
-matplotlib
-numpy
-pyyaml
-""")
-
-    st.subheader("Dockerfile (HuggingFace / Deployment Ready)")
-    st.code("""
-FROM python:3.10
-WORKDIR /app
-COPY . /app
-RUN pip install -r requirements.txt
-EXPOSE 7860
-CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0"]
-""")
-
-    st.subheader("README.md")
-    st.markdown("""
-## Fake News OpenEnv FINAL
-### Features
-- OpenEnv RL-style environment
-- 3 difficulty levels (easy/medium/hard)
-- Agent grading (0–1 score)
-- Reward shaping with confidence
-- ML baseline model
-- Streamlit UI
-### Run Locally
-```
-pip install -r requirements.txt
-streamlit run app.py
-```
-### HuggingFace Spaces Deployment
-- Upload files
-- Use Dockerfile OR Streamlit runtime
-- App runs on port 7860
-""")
-
-# =========================
-# BASELINE SCRIPT (REPRODUCIBLE)
-# =========================
-# run: python inference.py
+ 
