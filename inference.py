@@ -4,6 +4,9 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
+# =========================
+# SIMPLE TRAINING DATA
+# =========================
 DATA = [
     ("Government launches education policy", 1),
     ("Scientists discover water on Mars", 1),
@@ -20,9 +23,13 @@ X = vectorizer.fit_transform(texts)
 model = LogisticRegression(max_iter=500)
 model.fit(X, labels)
 
+# =========================
+# PREDICTION FUNCTION
+# =========================
 def predict(text):
     x = vectorizer.transform([text])
     prob = model.predict_proba(x)[0]
+
     label = int(np.argmax(prob))
     confidence = float(np.max(prob))
 
@@ -31,6 +38,10 @@ def predict(text):
         "confidence": round(confidence, 3)
     }
 
+# =========================
+# REQUIRED FOR OPENENV
+# =========================
 if __name__ == "__main__":
-    text = sys.argv[1]
-    print(json.dumps(predict(text)))
+    text = sys.argv[1]   # takes input from OpenEnv
+    result = predict(text)
+    print(json.dumps(result))   # MUST print JSON
