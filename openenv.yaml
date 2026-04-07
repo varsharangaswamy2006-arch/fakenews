@@ -1,0 +1,2 @@
+env_name: FakeNewsOpenEnvFinal
+entry_point: inference.py
