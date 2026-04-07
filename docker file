@@ -1,16 +1,7 @@
-FROM python:3.10
+# Fake News Detector
 
-# Set working directory
-WORKDIR /app
+Streamlit app for fake news classification using ML.
 
-# Copy all files
-COPY . /app
-
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Expose port
-EXPOSE 7860
-
-# Run Streamlit app
-CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0"]
+## Run locally
+pip install -r requirements.txt
+streamlit run app.py
