@@ -1,38 +1,55 @@
-import altair as alt
-import numpy as np
-import pandas as pd
 import streamlit as st
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.metrics import accuracy_score, confusion_matrix
 
-"""
-# Welcome to Streamlit!
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:.
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+from model import predict
 
-num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
+# =========================
+# DATA
+# =========================
+DATA = [
+    ("Government launches education policy", 1),
+    ("Scientists discover water on Mars", 1),
+    ("Aliens landed in India", 0),
+    ("Miracle cure found for all diseases", 0)
+]
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
+# =========================
+# UI
+# =========================
+st.set_page_config(page_title="Fake News Detector", layout="wide")
+st.title("🧠 Fake News Detector")
 
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
+mode = st.sidebar.selectbox("Mode", ["Inference", "Evaluation"])
 
-df = pd.DataFrame({
-    "x": x,
-    "y": y,
-    "idx": indices,
-    "rand": np.random.randn(num_points),
-})
+# =========================
+# INFERENCE
+# =========================
+if mode == "Inference":
+    text = st.text_area("Enter News")
 
-st.altair_chart(alt.Chart(df, height=700, width=700)
-    .mark_point(filled=True)
-    .encode(
-        x=alt.X("x", axis=None),
-        y=alt.Y("y", axis=None),
-        color=alt.Color("idx", legend=None, scale=alt.Scale()),
-        size=alt.Size("rand", legend=None, scale=alt.Scale(range=[1, 150])),
-    ))
+    if st.button("Predict"):
+        pred, conf, prob = predict(text)
+
+        st.success("REAL" if pred else "FAKE")
+        st.write("Confidence:", round(conf, 3))
+
+        fig, ax = plt.subplots()
+        ax.bar(["FAKE", "REAL"], prob)
+        st.pyplot(fig)
+
+# =========================
+# EVALUATION
+# =========================
+elif mode == "Evaluation":
+    y_true, y_pred = [], []
+
+    for t, l in DATA:
+        p, _, _ = predict(t)
+        y_true.append(l)
+        y_pred.append(p)
+
+    st.write("Accuracy:", accuracy_score(y_true, y_pred))
+    st.write(confusion_matrix(y_true, y_pred))
+
